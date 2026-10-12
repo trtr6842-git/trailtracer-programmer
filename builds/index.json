@@ -1,0 +1,38 @@
+{
+  "schema": 1,
+  "builds": [
+    {
+      "manifest": "Trail-Tracer/main/d4f8135bcfee/manifest.json",
+      "repo": "rctestflight/Trail-Tracer",
+      "branch": "main",
+      "commit": "d4f8135bcfeea779fd8c0a44cf709b403cf5497d",
+      "subject": "",
+      "chip": "esp32s2",
+      "name": "ESP32 main-branch firmware (V1.0 line)",
+      "version": "main d4f8135",
+      "built_utc": "2026-10-12T12:09:39Z"
+    },
+    {
+      "manifest": "Trail_Tracer_Mower/main/cc9bedb34eec/manifest.json",
+      "repo": "rctestflight/Trail_Tracer_Mower",
+      "branch": "main",
+      "commit": "cc9bedb34eecd0ef759fdffb5c56b0dd77d177b9",
+      "subject": "",
+      "chip": "esp32s2",
+      "name": "ESP32 main-branch firmware (V1.0 line)",
+      "version": "main cc9bedb",
+      "built_utc": "2026-10-12T12:09:25Z"
+    },
+    {
+      "manifest": "Trail_Tracer_Mower/feature-rx-v2-firmware/0675d2f357d9/manifest.json",
+      "repo": "rctestflight/Trail_Tracer_Mower",
+      "branch": "feature/rx-v2-firmware",
+      "commit": "0675d2f357d9b88eb5edc8ef0fd79d55917991b1",
+      "subject": "",
+      "chip": "esp32s2",
+      "name": "ESP32 rover firmware",
+      "version": "0.5.57",
+      "built_utc": "2026-10-12T12:09:07Z"
+    }
+  ]
+}
