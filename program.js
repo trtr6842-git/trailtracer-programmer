@@ -341,7 +341,9 @@ function instruct(text) { stepText = text; if (text) say('USER: ' + text); rende
 
 function vcmp(a, b) { const x = String(a).split(/[.+ ]/).map(Number), y = String(b).split(/[.+ ]/).map(Number); for (let i = 0; i < 3; i++) if ((x[i] || 0) !== (y[i] || 0)) return (x[i] || 0) - (y[i] || 0); return 0; }
 function change(from, to) { if (!from) return 'Replaces an unknown version.'; const c = vcmp(to, from); return c === 0 ? `Same version (${from}).` : c > 0 ? `Replaces ${from}.` : `Older than the board (${from} to ${to}).`; }
-const srcLine = (m, rel) => `${m.source.repo.split('/').pop()}, branch ${m.source.branch}, commit ${m.source.commit.slice(0, 7)}`
+const srcLine = (m, rel) => rel && rel === m.source.branch
+  ? `${m.source.repo.split('/').pop()}, commit ${m.source.commit.slice(0, 7)}, release ${rel}`
+  : `${m.source.repo.split('/').pop()}, branch ${m.source.branch}, commit ${m.source.commit.slice(0, 7)}`
   + (rel ? `, release ${rel}` : rel === false ? ', development branch' : '');
 let showDev = (() => { try { return localStorage.getItem('tt.dev') === '1'; } catch { return false; } })();
 
