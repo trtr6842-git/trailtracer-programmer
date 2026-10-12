@@ -13,6 +13,8 @@ and phones do not have Web Serial).
 
 The page checks the SHA-256 of each file against its manifest before it writes anything.
 
+Links: `?fw=<repo>/<branch or tag>` opens the page with that firmware chosen (it follows the branch or tag); `&commit=<sha>` pins one exact build. The page shows the link for the current choice under the menu.
+
 ## Builds
 
 Every 30 minutes (or when run by hand) a workflow checks the public firmware repositories (rctestflight/Trail_Tracer_Mower, rctestflight/Trail-Tracer) and builds each new commit of the branch `main`, of every tag, and of every other branch that holds the opt-in file `programmer.json` (docs/programmer-json.md). Builds of refs that are no longer offered leave the page. It keeps the newest 10 builds of each ref. On the page, one menu lists every offered branch and tag; the default is the newest `main`. Before it publishes, the workflow checks every file of the site; one finding stops the publish. The check reads its word lists from the repository secret GATE_LISTS; without it nothing is published.
