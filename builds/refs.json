@@ -2,12 +2,12 @@
   "refs": [
     {
       "repo": "rctestflight/Trail_Tracer_Mower",
-      "ref": "feature/rx-v2-0.5.60",
+      "ref": "dev",
       "tag": false
     },
     {
       "repo": "rctestflight/Trail_Tracer_Mower",
-      "ref": "feature/rx-v2-0.5.61",
+      "ref": "dev-tyler",
       "tag": false
     },
     {

@@ -6,13 +6,13 @@
     "RX_REVA"
   ],
   "name": "ESP32 rover firmware",
-  "version": "0.5.60",
+  "version": "0.5.61",
   "source": {
     "repo": "rctestflight/Trail_Tracer_Mower",
-    "branch": "feature/rx-v2-0.5.60",
-    "commit": "f825b5797dbd6ff97968e78672ebbfb407f9b7ce",
+    "branch": "dev",
+    "commit": "128e2beff1a4233854283275958d89899abecaf6",
     "subject": "",
-    "built_utc": "2026-10-12T22:09:29Z",
+    "built_utc": "2026-10-12T23:13:34Z",
     "builder": "local"
   },
   "esp32": {
@@ -125,7 +125,7 @@
     {
       "path": "firmware.bin",
       "size": 935600,
-      "sha256": "86f2bdc794fabb99dade6d4e21a565fee36e3db0c5caddf83b5595b31d41542e"
+      "sha256": "6a3c5c888d885ca872b625cfa9714f6c96a632d95b1626c65ca72a92a4963829"
     },
     {
       "path": "boot_app0.bin",

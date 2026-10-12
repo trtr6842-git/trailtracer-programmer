@@ -9,10 +9,10 @@
   "version": "2.0.24",
   "source": {
     "repo": "rctestflight/Trail_Tracer_Mower",
-    "branch": "feature/rx-v2-0.5.61",
-    "commit": "c876ea50c519021cfa5694807e0645b53c734752",
+    "branch": "dev",
+    "commit": "128e2beff1a4233854283275958d89899abecaf6",
     "subject": "",
-    "built_utc": "2026-10-12T23:00:51Z",
+    "built_utc": "2026-10-12T23:13:34Z",
     "builder": "local"
   },
   "stm32": {
