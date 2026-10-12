@@ -75,14 +75,32 @@ def build(repo, branch, sha, out, work):
                         "--repo", repo, "--branch", branch, "--commit", sha, "--subject", "", "--out", str(out)], check=True)
 
 
-def prune(out):
-    """Keep the newest KEEP builds of each repo and branch: older folders and index entries go."""
+def reachable(work):
+    """{repo: set of commits} reachable from any branch or tag of the repo: a blobless bare clone holds
+    every reachable commit and no other (a rewritten branch leaves its old commits out)."""
+    out = {}
+    for repo in REPOS:
+        d = work / ("reach-" + repo.replace("/", "-"))
+        subprocess.run(["git", "clone", "--quiet", "--bare", "--filter=blob:none", f"https://github.com/{repo}.git", str(d)], check=True)
+        out[repo] = set(subprocess.run(["git", "-C", str(d), "rev-list", "--all"], capture_output=True, text=True,
+                                       check=True).stdout.split())
+    return out
+
+
+def prune(out, reach):
+    """Drop the builds of commits that no branch or tag of their repo reaches any more (a rewritten or
+    deleted branch), then keep the newest KEEP builds of each repo and branch: older folders and index
+    entries go."""
     idx_path = out / "index.json"
     if not idx_path.exists():
         return
     idx = json.loads(idx_path.read_text())
     seen, keep = {}, []
     for b in sorted(idx["builds"], key=lambda b: b["built_utc"], reverse=True):
+        if b["repo"] in reach and b["commit"] not in reach[b["repo"]]:
+            shutil.rmtree(out / Path(b["manifest"]).parent, ignore_errors=True)
+            print(f"dropped {b['repo']} {b['branch']} {b['commit'][:7]} {b['chip']}: no branch or tag reaches it")
+            continue
         k = (b["repo"], b["branch"], b["chip"])
         seen[k] = seen.get(k, 0) + 1
         if seen[k] <= KEEP:
@@ -121,7 +139,7 @@ def main():
             except Exception as ex:                            # one ref that does not build stops nothing else
                 failed.append(f"{repo} {ref} {sha[:12]}: {ex}")
                 print(f"   failed: {ex}", flush=True)
-    prune(out)
+        prune(out, reachable(work))
     # releases.json: the tagged commits of the repos; the page shows those as releases, the other branch
     # heads as development branches (behind a switch).
     rel = {sha: ref for repo, ref, sha in targets(tags_only=True)}
