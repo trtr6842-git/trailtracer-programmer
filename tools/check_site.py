@@ -133,7 +133,7 @@ def main():
             findings.append(f"path not allowed: {rel}")
         if re.search(BANNED_WORDS, rel, re.I):
             findings.append(f"banned word in path: {rel}")
-        if re.search(CLOSED_STM32, rel) and not re.search(ALLOWED_STM32, rel):
+        if re.search(CLOSED_STM32, p.name) and not re.search(ALLOWED_STM32, p.name):   # the file name, not the branch folder
             findings.append(f"plain STM32 image: {rel}")
         if p.stat().st_size > MAX_FILE:
             findings.append(f"file over 5 MB: {rel}")

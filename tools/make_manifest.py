@@ -165,10 +165,15 @@ def stm32(a):
     manifest = {
         "schema": 1, "product": "trail-tracer-rx", "chip": "stm32g070", "boards": BOARDS,
         "name": "STM32 app", "version": version, "source": source(a, Path(a.repo_dir) if a.repo_dir else None),
-        "stm32": {"app_version": version, "link": a.link, "boot_checker_min": "0.1.0", "product_id": hex(product),
+        # link: app 2.x speaks link v2; 0.x and 1.x speak v1
+        "stm32": {"app_version": version, "link": a.link or ("v2" if ver & 255 >= 2 else "v1"),
+                  "boot_checker_min": "0.1.0", "product_id": hex(product),
                   "update": {"header": "app.commit_header", "image": "app.bin.encrypted", "chunk_size": chunk + 16, "chunks": count},
                   "needs_esp32": "0.5.26"},
     }
+    keys = {"app_version", "link", "boot_checker_min", "product_id", "update", "needs_esp32"}
+    if set(manifest["stm32"]) != keys or set(manifest["stm32"]["update"]) != {"header", "image", "chunk_size", "chunks"}:
+        raise SystemExit(f"stop: STM32 manifest keys {sorted(manifest['stm32'])} are not {sorted(keys)}")
     place(a.out, None, {"app.commit_header": header, "app.bin.encrypted": image}, manifest)
 
 
@@ -184,7 +189,7 @@ def main():
     ap.add_argument("--header"), ap.add_argument("--image")
     ap.add_argument("--family", default="rover", choices=["rover", "main"], help="rover firmware, or the main-branch (V1.0 line) firmware (esp32)")
     ap.add_argument("--table", default="rover-4mb-1", help="partition table name, as the firmware reports it (esp32)")
-    ap.add_argument("--link", default="v2", help="STM32 link version of the app (stm32)")
+    ap.add_argument("--link", help="STM32 link version of the app (stm32); default from the app version: 2.x v2, else v1")
     a = ap.parse_args()
     (esp32 if a.chip == "esp32" else stm32)(a)
 

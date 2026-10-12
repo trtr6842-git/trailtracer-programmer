@@ -271,13 +271,21 @@ async function stmLoad(b0, build) {
   const t0 = Date.now(), dec = new TextDecoder();
   for (;;) {
     const txt = dec.decode(b.bin), k = txt.indexOf('no text until it ends');
-    if (k >= 0) { const e = txt.indexOf('\n', k); if (e >= 0) { say(txt.slice(txt.lastIndexOf('STM bridge on', k), e).trim()); b.bin = b.bin.slice(new TextEncoder().encode(txt.slice(0, e + 1)).length); break; } }
+    if (k >= 0) {
+      const e = txt.indexOf('\n', k);
+      if (e >= 0) {
+        const line = txt.slice(txt.lastIndexOf('STM bridge on', k), e).trim();
+        say(line);
+        if (/HELLO not answered/.test(line)) throw new Error('The STM32 has no update loader (no answer to HELLO). Nothing was written. It needs a one-time load of the factory image with an ST-LINK.');
+        b.bin = b.bin.slice(new TextEncoder().encode(txt.slice(0, e + 1)).length); break;
+      }
+    }
     if (/BOOT rover-firmware/.test(txt)) throw new Error('the board started normally, not as an STM32 bridge: the update flag was gone at this power-on. Start the STM32 install again.');
     if (Date.now() - t0 > 4000) { say('no "STM bridge on" line (sent before the port opened); HELLO anyway'); b.bin = new Uint8Array(0); break; }
     await sleep(100);
   }
   await send(b, frame(1));
-  const h = await readFrame(b, 2000);
+  const h = await readFrame(b, 2000).catch(() => { throw new Error('The STM32 has no update loader (no answer to HELLO). Nothing was written. It needs a one-time load of the factory image with an ST-LINK.'); });
   say(`HELLO: boot status ${h.p[0]}, app ${h.p[1]}.${h.p[2]}.${h.p[3]}, IAP ${h.p[4]}.${h.p[5]}.${h.p[6]}`);
   await send(b, frame(2, header));
   let r = await readFrame(b, 2000);
@@ -360,7 +368,7 @@ function offersFor(b) {
       else if (!rover) refuse(`The STM32 install needs ESP32 rover firmware ${m.stm32.needs_esp32} or later. Install it first.`);
       else if (vcmp(b.version, m.stm32.needs_esp32) < 0) refuse(`The STM32 install needs ESP32 rover firmware ${m.stm32.needs_esp32} or later. This board has ${b.version}. Install it first.`);
       else if (b.role === 'monitor') refuse('The board runs as a monitor. Switch it to vehicle first.');
-      else if (!stmV2) refuse(`The STM32 has app 1.x or does not answer. Its update needs a one-time load with an ST-LINK.`);
+      else if (!stmV2) out.push({ l1: `Install ${name}`, l2, l3: `Replaces STM32 app 1.x. The page checks the STM32 update loader first; without it nothing is written and a one-time ST-LINK load is needed. You unplug and plug in the board once.`, go: () => stmLoad(b, build) });
       else out.push({ l1: `${vcmp(m.version, stmVer[1]) === 0 ? 'Reinstall' : 'Install'} ${name}`, l2, l3: `${change(stmVer[1], m.version)} STM32 settings kept. You unplug and plug in the board once.`, go: () => stmLoad(b, build) });
     }
   }
