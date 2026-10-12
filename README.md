@@ -15,10 +15,7 @@ The page checks the SHA-256 of each file against its manifest before it writes a
 
 ## Builds
 
-Every 30 minutes a workflow builds the head of each branch and each tag of the public firmware repositories
-(rctestflight/Trail_Tracer_Mower, rctestflight/Trail-Tracer) that has no build yet, with PlatformIO. A tag marks a release; the page shows releases, and the other branch heads behind a switch. It keeps
-the newest 10 builds of each branch. Before it publishes, it checks every file of the site; one finding
-stops the publish. The check reads its word lists from the repository secret GATE_LISTS; without it nothing is published.
+Every 30 minutes (or when run by hand) a workflow checks the public firmware repositories (rctestflight/Trail_Tracer_Mower, rctestflight/Trail-Tracer) and builds each new commit of the branch `main`, of every tag, and of every other branch that holds the opt-in file `programmer.json` (docs/programmer-json.md). Builds of refs that are no longer offered leave the page. It keeps the newest 10 builds of each ref. On the page, one menu lists every offered branch and tag; the default is the newest `main`. Before it publishes, the workflow checks every file of the site; one finding stops the publish. The check reads its word lists from the repository secret GATE_LISTS; without it nothing is published.
 
 | Path | What |
 |---|---|
@@ -26,6 +23,7 @@ stops the publish. The check reads its word lists from the repository secret GAT
 | tools/build_all.py | builds the branch heads |
 | tools/make_manifest.py | writes the manifest of one build |
 | tools/check_site.py | the check before a publish |
+| docs/programmer-json.md | how a branch gets on the page |
 | site branch | the published site: the page and builds/ |
 | builds/index.json | the list of builds |
 | builds/<repo>/<branch>/<commit>/manifest.json | one build: chip, version, source, files with SHA-256 |

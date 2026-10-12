@@ -41,7 +41,7 @@ details summary { cursor: pointer; color: var(--dim); margin-top: 8px; }
   <p>Plug an Rx into this PC, then press "Connect an Rx" and choose it. After each restart or replug of the board, press "Connect an Rx" and choose it again (the Rx has no USB serial number, so the browser forgets it).</p>
   <p id="release" class="note"></p>
   <button id="connectBtn">Connect an Rx</button>
-  <label id="devSw" class="note" hidden style="margin-left: 12px; cursor: pointer"><input type="checkbox"> <span></span></label>
+  <label id="refBox" hidden style="margin-left: 12px">Firmware from <select id="refMenu" style="font: inherit; max-width: 100%"></select></label>
   <div id="steps" class="card steps" hidden></div>
   <div id="job" class="card" hidden></div>
   <div id="boards"></div>

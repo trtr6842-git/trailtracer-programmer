@@ -76,6 +76,8 @@ def data_ranges(data):
 
 
 def place(out, src, files, manifest):
+    if getattr(place, "label", None):                 # the plain label of programmer.json, shown on the page
+        manifest["label"] = place.label
     """Copy the files into <out>/<repo>/<branch>/<commit>/, write manifest.json, add the build to index.json."""
     s = manifest["source"]
     rel = Path(s["repo"].split("/")[-1]) / re.sub(r"[^A-Za-z0-9._-]", "-", s["branch"]) / s["commit"][:12]
@@ -184,6 +186,7 @@ def main():
     ap.add_argument("--repo-dir", help="the git repo of the build: source data from git")
     ap.add_argument("--repo"), ap.add_argument("--branch"), ap.add_argument("--commit"), ap.add_argument("--subject")
     ap.add_argument("--version"), ap.add_argument("--built", help="build time, UTC, 2026-10-12T02:00:07Z")
+    ap.add_argument("--label", help="plain label of the item (programmer.json), shown on the page")
     ap.add_argument("--env", default="lolin_s2_mini", help="PlatformIO environment (esp32)")
     ap.add_argument("--files", help="folder with the ESP32 files, in place of the PlatformIO build folder")
     ap.add_argument("--header"), ap.add_argument("--image")
@@ -191,6 +194,7 @@ def main():
     ap.add_argument("--table", default="rover-4mb-1", help="partition table name, as the firmware reports it (esp32)")
     ap.add_argument("--link", help="STM32 link version of the app (stm32); default from the app version: 2.x v2, else v1")
     a = ap.parse_args()
+    place.label = a.label
     (esp32 if a.chip == "esp32" else stm32)(a)
 
 

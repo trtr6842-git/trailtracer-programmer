@@ -317,9 +317,7 @@ function render() {
   const keep = new Map([...document.querySelectorAll('pre[data-p]')].map(e => [e.dataset.p, e.scrollHeight - e.scrollTop - e.clientHeight < 4 ? -1 : e.scrollTop]));
   $('release').textContent = builds.length ? `Builds: ${builds.length} (${[...new Set(builds.map(x => x.src))].join(', ')})` : 'No builds found.';
   $('steps').hidden = !stepText; $('steps').textContent = stepText;
-  const nDev = builds.filter(x => x.release === false).length;
-  $('devSw').hidden = !nDev;
-  if (nDev) { $('devSw').querySelector('input').checked = showDev; $('devSw').querySelector('span').textContent = `Show development branches (${nDev} builds that are not a release)`; }
+  drawRefMenu();
   const idle = !job || job.done;
   $('boards').innerHTML = [...boards.values()].map((b, k) => {
     const rows = [['ESP32', b.mode === 'rom' ? 'ready for a load (no firmware runs)' : (b.firmware || (b.detecting ? 'reading' : '-')) + (b.version ? ` ${b.version}` : '')],
@@ -345,15 +343,49 @@ const srcLine = (m, rel) => rel && rel === m.source.branch
   ? `${m.source.repo.split('/').pop()}, commit ${m.source.commit.slice(0, 7)}, release ${rel}`
   : `${m.source.repo.split('/').pop()}, branch ${m.source.branch}, commit ${m.source.commit.slice(0, 7)}`
   + (rel ? `, release ${rel}` : rel === false ? ', development branch' : '');
-let showDev = (() => { try { return localStorage.getItem('tt.dev') === '1'; } catch { return false; } })();
+let refSel = (() => { try { return JSON.parse(localStorage.getItem('tt.ref') || 'null'); } catch { return null; } })();
+const stmOnly = repo => builds.filter(x => x.m.source.repo === repo).every(x => x.m.chip === 'stm32g070');
+function refsOf() {
+  const m = new Map();
+  for (const x of builds) {
+    const s = x.m.source;
+    if (stmOnly(s.repo)) continue;
+    const k = s.repo + ' ' + s.branch, r = m.get(k);
+    if (!r || s.built_utc > r.t) m.set(k, { repo: s.repo, ref: s.branch, release: x.release, commit: s.commit, t: s.built_utc });
+  }
+  const rank = r => r.ref === 'main' ? 0 : r.release ? 1 : 2;
+  return [...m.values()].sort((a, b) => a.repo.localeCompare(b.repo) || rank(a) - rank(b) || b.t.localeCompare(a.t));
+}
+function currentRef() {
+  if (refSel === '*') return '*';
+  const refs = refsOf();
+  if (refSel && refs.some(r => r.repo === refSel.repo && r.ref === refSel.ref)) return refSel;
+  const mains = refs.filter(r => r.ref === 'main').sort((a, b) => b.t.localeCompare(a.t));
+  const d = mains.find(r => /Trail_Tracer_Mower$/.test(r.repo)) || mains[0] || [...refs].sort((a, b) => b.t.localeCompare(a.t))[0];
+  return d ? { repo: d.repo, ref: d.ref } : '*';
+}
+const inSel = (x, sel) => sel === '*' || stmOnly(x.m.source.repo) || (x.m.source.repo === sel.repo && x.m.source.branch === sel.ref);
+function drawRefMenu() {
+  const refs = refsOf(), menu = $('refMenu'), sel = currentRef();
+  $('refBox').hidden = !refs.length || sel === '*';
+  const key = refs.map(r => r.repo + ' ' + r.ref + ' ' + r.commit).join('|');
+  if (menu.dataset.key !== key) {
+    menu.dataset.key = key;
+    const repos = [...new Set(refs.map(r => r.repo))];
+    menu.innerHTML = repos.map(repo => `<optgroup label="${esc(repo.split('/').pop())}">` + refs.filter(r => r.repo === repo).map(r =>
+      `<option value="${esc(JSON.stringify({ repo: r.repo, ref: r.ref }))}">${esc(r.ref)}${r.release ? ' (release)' : ''}, commit ${esc(r.commit.slice(0, 7))}, ${esc(r.t.slice(0, 10))}</option>`).join('') + '</optgroup>').join('');
+  }
+  if (sel !== '*') menu.value = JSON.stringify({ repo: sel.repo, ref: sel.ref });
+}
 
 function offersFor(b) {
   const out = [], no = [], rover = b.firmware === 'rover firmware', rom = b.mode === 'rom', v1 = !rover && !rom && !!b.firmware;
   const stmVer = (b.stm || '').match(/^app (\d+\.\d+\.\d+)/), stmV2 = stmVer && +stmVer[1].split('.')[0] >= 2;
   const rev = b.board || 'RX_REVA', full = 'You unplug and plug in the board once at the end.';
+  const sel = currentRef();
   for (const build of builds) {
-    const m = build.m, l2 = srcLine(m, build.release), name = m.chip === 'stm32g070' ? `STM32 app ${m.version}` : m.esp32.usb_update ? `ESP32 rover firmware ${m.version}` : `ESP32 main-branch firmware (V1.0 line), ${m.version}`;
-    if (build.release === false && !showDev) continue;
+    const m = build.m, l2 = srcLine(m, build.release), name = m.chip === 'stm32g070' ? `${m.label || 'STM32 app'} ${m.version}` : m.esp32.usb_update ? `${m.label || 'ESP32 rover firmware'} ${m.version}` : `${m.label || 'ESP32 main-branch firmware (V1.0 line)'}, ${m.version}`;
+    if (!inSel(build, sel)) continue;
     const refuse = reason => no.push({ l1: name, l2, reason });
     if (!m.boards.includes(rev)) { refuse(`This image is for board revision ${m.boards.join(', ')}. This board is revision ${rev}.`); continue; }
     if (m.chip === 'esp32s2' && m.esp32.usb_update) {
@@ -381,6 +413,7 @@ function offersFor(b) {
 }
 
 async function start() {
+  $('refMenu').onchange = e => { refSel = JSON.parse(e.target.value); try { localStorage.setItem('tt.ref', e.target.value); } catch { /* no storage */ } render(); };
   if (window.PROGRAM_TEST) return render();
   try {
     let r = await fetch('sources.json').catch(() => null);
@@ -405,7 +438,6 @@ async function start() {
     $('connectBtn').disabled = true;
     return render();
   }
-  $('devSw').querySelector('input').onchange = e => { showDev = e.target.checked; try { localStorage.setItem('tt.dev', showDev ? '1' : '0'); } catch { /* no storage */ } render(); };
   $('connectBtn').onclick = async () => {
     try { open(await navigator.serial.requestPort({ filters: [{ usbVendorId: ESPRESSIF }] })); }
     catch { /* the chooser was closed */ }
