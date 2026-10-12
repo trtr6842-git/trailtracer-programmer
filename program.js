@@ -104,7 +104,7 @@ async function detect(b) {
   const hb = await waitLine(b, /^HB |Trail-Tracer-Rx-Monitor v/, 2500);
   if (!hb) {
     const boot = await ask(b, 'boot', /^BOOT rover-firmware/, 2000);
-    if (!boot) b.firmware = 'shipped V1.0 (no rover lines, no answer to "boot")';
+    if (!boot) b.firmware = 'V1.0 line: shipped V1.0 or main branch (no rover lines, no answer to "boot")';
   } else if (!b.version) await ask(b, b.role === 'monitor' ? 'V' : 'boot', /^BOOT rover-firmware|Trail-Tracer-Rx-Monitor v/, 2000);
   if (b.firmware === 'rover firmware' && b.role !== 'monitor' && !b.table) await ask(b, 'ota status', /^OTA status/, 2000);
   if (b.firmware === 'rover firmware' && b.role !== 'monitor' && !b.stm) {
@@ -112,6 +112,7 @@ async function detect(b) {
     if (!s && !b.stm) b.stm = 'no answer to CID 30 (app 1.x, or no STM32 link)';
   }
   b.detecting = false; render();
+  boardOpened(b);
 }
 
 function say(text) { if (job) { job.log.push(`${new Date().toTimeString().slice(0, 8)}  ${text}`); job.prog = false; } render(); }
