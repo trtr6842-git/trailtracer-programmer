@@ -1,0 +1,97 @@
+name: Build branches and publish the page
+
+# Two jobs. "build" runs code of the firmware branches (PlatformIO extra scripts are not trusted): it has
+# no token and no write permission, and it hands over only site/builds as an artifact. "deploy" checks that
+# artifact with check_site.py from its own fresh checkout of this repo, then keeps the builds in the site
+# branch and publishes the page.
+
+on:
+  schedule:
+    - cron: "*/30 * * * *"
+  workflow_dispatch:
+
+permissions: {}
+
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Builds of earlier runs (site branch, read only)
+        run: |
+          mkdir -p site/builds
+          if git fetch --quiet --depth 1 origin site; then git archive FETCH_HEAD builds | tar -x -C site; fi
+
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97  # v7.0.0
+        with:
+          python-version: "3.12"
+
+      - name: PlatformIO
+        run: pip install platformio==6.2.0
+
+      - name: Build the branch heads that have no build
+        run: python tools/build_all.py site/builds
+
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9  # v7.0.2
+        with:
+          name: builds
+          path: site/builds
+          include-hidden-files: false
+          retention-days: 1
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deploy.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
+
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333  # v8.0.2
+        with:
+          name: builds
+          path: new_builds
+
+      - name: Site folder
+        run: |
+          if git fetch --quiet origin site; then git worktree add site FETCH_HEAD; else git worktree add --orphan -b site site; fi
+          rm -rf site/builds
+          cp -r new_builds site/builds
+          cp page/index.html page/program.js page/icon-32.png site/
+          echo '{"sources": [{"name": "builds", "base": "builds/"}]}' > site/sources.json
+          touch site/.nojekyll
+
+      - name: Check the site (layout, paths, names, addresses, banned words, closed images)
+        env:
+          GATE_LISTS: ${{ secrets.GATE_LISTS }}
+        run: python3 tools/check_site.py site
+
+      - name: Keep the builds in the site branch
+        run: |
+          cd site
+          git add -A
+          if ! git diff --cached --quiet; then
+            git -c user.name="github-actions[bot]" -c user.email="41898282+github-actions[bot]@users.noreply.github.com" commit --quiet -m "Builds"
+            git push --quiet origin HEAD:site
+          fi
+
+      - uses: actions/upload-pages-artifact@fc324d3547104276b827a68afc52ff2a11cc49c9  # v5.0.0
+        with:
+          path: site
+
+      - id: deploy
+        uses: actions/deploy-pages@368f82528645a54fb793d4d04e342629a3f51346  # v5.0.1
