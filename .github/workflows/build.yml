@@ -76,6 +76,9 @@ jobs:
           cp page/index.html page/program.js page/icon-32.png site/
           echo '{"sources": [{"name": "builds", "base": "builds/"}]}' > site/sources.json
           touch site/.nojekyll
+          # the page version: PAGE_VERSION of the page, the date and the short commit of this repo
+          v=$(grep -o "PAGE_VERSION = '[0-9.]*'" page/program.js | cut -d"'" -f2)
+          printf '{"version": "%s", "date": "%s", "commit": "%s"}\n' "$v" "$(git log -1 --format=%cs)" "$(git rev-parse --short HEAD)" > site/version.json
 
       - name: Check the site (layout, paths, names, addresses, banned words, closed images)
         env:
