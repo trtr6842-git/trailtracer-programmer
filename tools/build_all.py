@@ -1,4 +1,4 @@
-"""build_all.py - build the head of every branch of the public Rx firmware repos that has no build yet.
+"""build_all.py - build the head of every branch and every tag of the public Rx firmware repos that has no build yet.
 
 For each branch: shallow clone, PlatformIO build of the default environment with prefix maps (no local
 path goes into the image), then tools/make_manifest.py adds the build to <out> (index.json and
@@ -94,32 +94,37 @@ def prune(out):
     idx_path.write_text(json.dumps(idx, indent=2) + "\n")
 
 
+def targets(tags_only=False):
+    """(repo, ref, commit) to build: the head of every branch, and every tag (a tag marks a release; its
+    commit is often no branch head any more). A ref folder holds the builds of that branch or tag."""
+    out = []
+    for repo in REPOS:
+        if not tags_only:
+            out += [(repo, b["name"], b["commit"]["sha"]) for b in api(f"repos/{repo}/branches?per_page=100")
+                    if not re.search(SKIP_BRANCH, b["name"])]
+        out += [(repo, tg["name"], tg["commit"]["sha"]) for tg in api(f"repos/{repo}/tags?per_page=100")]
+    return out
+
+
 def main():
     out = Path(sys.argv[1]).resolve()
     out.mkdir(parents=True, exist_ok=True)
     failed = []
     with tempfile.TemporaryDirectory(ignore_cleanup_errors=True) as tmp:
         work = Path(tmp)
-        for repo in REPOS:
-            for br in api(f"repos/{repo}/branches?per_page=100"):
-                name, sha = br["name"], br["commit"]["sha"]
-                if re.search(SKIP_BRANCH, name):
-                    continue
-                if (out / repo.split("/")[-1] / slug(name) / sha[:12]).exists():
-                    continue
-                print(f"== {repo} {name} {sha[:12]}", flush=True)
-                try:
-                    build(repo, name, sha, out, work)
-                except Exception as ex:                        # one branch that does not build stops nothing else
-                    failed.append(f"{repo} {name} {sha[:12]}: {ex}")
-                    print(f"   failed: {ex}", flush=True)
+        for repo, ref, sha in targets():
+            if (out / repo.split("/")[-1] / slug(ref) / sha[:12]).exists():
+                continue
+            print(f"== {repo} {ref} {sha[:12]}", flush=True)
+            try:
+                build(repo, ref, sha, out, work)
+            except Exception as ex:                            # one ref that does not build stops nothing else
+                failed.append(f"{repo} {ref} {sha[:12]}: {ex}")
+                print(f"   failed: {ex}", flush=True)
     prune(out)
     # releases.json: the tagged commits of the repos; the page shows those as releases, the other branch
     # heads as development branches (behind a switch).
-    rel = {}
-    for repo in REPOS:
-        for tag in api(f"repos/{repo}/tags?per_page=100"):
-            rel.setdefault(tag["commit"]["sha"], tag["name"])
+    rel = {sha: ref for repo, ref, sha in targets(tags_only=True)}
     (out / "releases.json").write_text(json.dumps({"commits": rel}, indent=2) + "\n")
     for f in failed:
         print("FAILED " + f)

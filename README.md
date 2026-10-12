@@ -15,8 +15,8 @@ The page checks the SHA-256 of each file against its manifest before it writes a
 
 ## Builds
 
-Every 30 minutes a workflow builds the head of each branch of the public firmware repositories
-(rctestflight/Trail_Tracer_Mower, rctestflight/Trail-Tracer) that has no build yet, with PlatformIO. It keeps
+Every 30 minutes a workflow builds the head of each branch and each tag of the public firmware repositories
+(rctestflight/Trail_Tracer_Mower, rctestflight/Trail-Tracer) that has no build yet, with PlatformIO. A tag marks a release; the page shows releases, and the other branch heads behind a switch. It keeps
 the newest 10 builds of each branch. Before it publishes, it checks every file of the site; one finding
 stops the publish. The check reads its word lists from the repository secret GATE_LISTS; without it nothing is published.
 
