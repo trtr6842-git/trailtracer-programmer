@@ -144,6 +144,7 @@ def main():
             findings += [f"{rel}: {w}" for w in check_encrypted(data)]
         else:
             check_text(rel + " (strings)", "\n".join(strings(data)), findings, binary=True)
+        if not rel.endswith(".bin.encrypted"):        # every file, text too (check_encrypted does its own)
             off = vector_table(data)
             if off is not None:
                 findings.append(f"{rel}: ARM vector table at offset {off}: a plain STM32 image")
