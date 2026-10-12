@@ -2,7 +2,7 @@
 
 A web page that installs firmware on a Trail Tracer Rx board over USB, and the builds that it offers.
 
-Page: https://trtr6842-git.github.io/trailtracer-programmer/ (Chrome or Edge on a computer; Firefox, Safari
+Page: https://rctestflight.github.io/Trail_Tracer_Mower/ (main copy, on the Mower repo). Test copy: https://trtr6842-git.github.io/trailtracer-programmer/ (Chrome or Edge on a computer; Firefox, Safari
 and phones do not have Web Serial).
 
 1. Plug the Rx into the computer.
