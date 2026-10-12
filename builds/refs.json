@@ -2,6 +2,13 @@
   "refs": [
     {
       "repo": "rctestflight/Trail_Tracer_Mower",
+      "ref": "debug-boot",
+      "tag": false,
+      "title": "Boot trace (debug)",
+      "description": "Prints each start-up step on USB to find a crash"
+    },
+    {
+      "repo": "rctestflight/Trail_Tracer_Mower",
       "ref": "dev",
       "tag": false
     },

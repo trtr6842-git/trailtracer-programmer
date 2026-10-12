@@ -2,6 +2,28 @@
   "schema": 1,
   "builds": [
     {
+      "manifest": "Trail_Tracer_Mower/debug-boot/488b5b23fa08/manifest.json",
+      "repo": "rctestflight/Trail_Tracer_Mower",
+      "branch": "debug-boot",
+      "commit": "488b5b23fa089ca8158e56631a6e27fd3dca6280",
+      "subject": "",
+      "chip": "esp32s2",
+      "name": "ESP32 rover firmware",
+      "version": "0.5.61",
+      "built_utc": "2026-10-12T23:24:19Z"
+    },
+    {
+      "manifest": "Trail_Tracer_Mower/debug-boot/488b5b23fa08/stm32/manifest.json",
+      "repo": "rctestflight/Trail_Tracer_Mower",
+      "branch": "debug-boot",
+      "commit": "488b5b23fa089ca8158e56631a6e27fd3dca6280",
+      "subject": "",
+      "chip": "stm32g070",
+      "name": "STM32 app",
+      "version": "2.0.24",
+      "built_utc": "2026-10-12T23:24:19Z"
+    },
+    {
       "manifest": "Trail-Tracer/main/172f102edefa/manifest.json",
       "repo": "rctestflight/Trail-Tracer",
       "branch": "main",
