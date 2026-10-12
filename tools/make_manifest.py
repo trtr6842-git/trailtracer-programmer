@@ -139,7 +139,7 @@ def esp32(a):
         raise SystemExit(f"stop: version {version!r} is not in firmware.bin")
     manifest = {
         "schema": 1, "product": "trail-tracer-rx", "chip": "esp32s2", "boards": BOARDS,
-        "name": "ESP32 rover firmware" if rover else "ESP32 main-branch firmware (V1.0 line)", "version": version, "source": source(a, repo_dir),
+        "name": "ESP32 rover firmware" if rover else "ESP32 firmware (no version report)", "version": version, "source": source(a, repo_dir),
         "esp32": {
             "partition_table": dict(partition_table(files["partitions.bin"].read_bytes(), a.table), file="partitions.bin"),
             "usb_update": {"file": "firmware.bin"} if rover else None,
@@ -190,7 +190,7 @@ def main():
     ap.add_argument("--env", default="lolin_s2_mini", help="PlatformIO environment (esp32)")
     ap.add_argument("--files", help="folder with the ESP32 files, in place of the PlatformIO build folder")
     ap.add_argument("--header"), ap.add_argument("--image")
-    ap.add_argument("--family", default="rover", choices=["rover", "main"], help="rover firmware, or the main-branch (V1.0 line) firmware (esp32)")
+    ap.add_argument("--family", default="rover", choices=["rover", "main"], help="rover firmware, or a firmware that does not report its version (esp32)")
     ap.add_argument("--table", default="rover-4mb-1", help="partition table name, as the firmware reports it (esp32)")
     ap.add_argument("--link", help="STM32 link version of the app (stm32); default from the app version: 2.x v2, else v1")
     a = ap.parse_args()

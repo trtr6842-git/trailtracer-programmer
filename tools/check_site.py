@@ -51,19 +51,16 @@ def texty(s):
 
 
 def check_text(rel, text, findings, binary=False):
-    for line in text.split("\n") if binary else [text]:
-        if binary and not texty(line):
-            continue
-        for m in re.finditer(BANNED_WORDS, line, re.I):
-            findings.append(f"{rel}: banned word '{m.group(0)}'" + (f" in '{line[:80]}'" if binary else ""))
-    for p in SECRET_PATTERNS:
-        if re.search(p, text):
-            findings.append(f"{rel}: possible secret ({p[:20]})")
-    for m in re.finditer(PRIVATE, text):
-        findings.append(f"{rel}: private path or address '{text[max(0, m.start() - 10):m.end() + 30]}'")
-    for m in set(re.findall(EMAIL, text)):
-        if not re.search(EMAIL_OK, m) and not m.endswith("noreply.github.com"):
-            findings.append(f"{rel}: e-mail address {m}")
+    """Findings name the file and the list only, never the matched text: the deploy log of a public repo is
+    public, and a match would show an entry of the word lists."""
+    if any(re.search(BANNED_WORDS, line, re.I) for line in (text.split("\n") if binary else [text]) if not binary or texty(line)):
+        findings.append(f"{rel}: banned word list")
+    if any(re.search(p, text) for p in SECRET_PATTERNS):
+        findings.append(f"{rel}: possible secret")
+    if re.search(PRIVATE, text):
+        findings.append(f"{rel}: private path or address list")
+    if any(not re.search(EMAIL_OK, m) and not m.endswith("noreply.github.com") for m in re.findall(EMAIL, text)):
+        findings.append(f"{rel}: e-mail address")
 
 
 def entropy(data):

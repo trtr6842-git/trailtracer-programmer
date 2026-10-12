@@ -104,7 +104,7 @@ async function detect(b) {
   const hb = await waitLine(b, /^HB |Trail-Tracer-Rx-Monitor v/, 2500);
   if (!hb) {
     const boot = await ask(b, 'boot', /^BOOT rover-firmware/, 2000);
-    if (!boot) b.firmware = 'V1.0 line: shipped V1.0 or main branch (no rover lines, no answer to "boot")';
+    if (!boot) b.firmware = 'other firmware (no version report)';
   } else if (!b.version) await ask(b, b.role === 'monitor' ? 'V' : 'boot', /^BOOT rover-firmware|Trail-Tracer-Rx-Monitor v/, 2000);
   if (b.firmware === 'rover firmware' && b.role !== 'monitor' && !b.table) await ask(b, 'ota status', /^OTA status/, 2000);
   if (b.firmware === 'rover firmware' && b.role !== 'monitor' && !b.stm) {
@@ -117,13 +117,15 @@ async function detect(b) {
 
 function say(text) { if (job) { job.log.push(`${new Date().toTimeString().slice(0, 8)}  ${text}`); job.prog = false; } render(); }
 function progress(text) { if (!job) return; if (job.prog) job.log.pop(); say(text); job.prog = true; }
+function stage(text, pct = null) { if (!job) return; job.stage = text; job.pct = pct; say('STEP: ' + text); }
+function setPct(p) { if (job && job.pct !== p) { job.pct = p; render(); } }
 async function run(name, fn) {
   if (job && !job.done) return alert('A job runs. Wait for its end.');
-  job = { name, log: [], done: false };
+  job = { name, log: [], done: false, stage: 'Starting', pct: null, result: null, devOpen: false };
   say(`${name}: start`);
-  try { await fn(); say(`${name}: done`); }
-  catch (ex) { say(`${name}: STOPPED: ${ex.message}`); }
-  job.done = true; render();
+  try { const r = await fn(); job.result = { ok: true, text: typeof r === 'string' ? r : 'Done.' }; say(`${name}: done`); }
+  catch (ex) { job.result = { ok: false, text: ex.message }; say(`${name}: STOPPED: ${ex.message}`); instruct(''); }
+  job.done = true; job.pct = null; render();
 }
 async function fetchBuild(build, path) {
   const f = build.m.files.find(x => x.path === path);
@@ -139,11 +141,13 @@ function crc32(d) { let c = 0xFFFFFFFF; for (const x of d) c = CRC32[(c ^ x) & 2
 const hex = d => [...d].map(x => x.toString(16).padStart(2, '0')).join('');
 
 async function otaUpdate(b0, build) {
+  stage('Checking the firmware file');
   const data = await fetchBuild(build, build.m.esp32.usb_update.file);
   if (data[0] !== 0xE9 || (data[12] | data[13] << 8) !== 2 || new DataView(data.buffer).getUint32(0x20, true) !== 0xABCD5432) throw new Error('firmware.bin is not an ESP32-S2 app image');
   const sha = await sha256hex(data);
   let b = b0;
   const status = async () => { const r = await ask(b, 'ota status', /^OTA status/, 5000); return r; };
+  stage('Sending the new firmware to the board', 0);
   for (let attempt = 1; ; attempt++) {
     const r = await ask(b, `ota begin ${data.length} ${sha} confirm crc`, /^OTA (begin ok|error)/, 8000);
     say(`attempt ${attempt}: ${r}`);
@@ -154,7 +158,7 @@ async function otaUpdate(b0, build) {
       const chunk = data.subarray(off, off + 512);
       const line = `ota w ${off} ${hex(chunk)}` + (crc ? ` ${crc32(chunk).toString(16).padStart(8, '0')}` : '');
       const a = await ask(b, line, /^OTA (ok|error)/, 5000);
-      if (a === `OTA ok ${off + chunk.length}`) { off += chunk.length; progress(`ESP32 ${Math.floor(100 * off / data.length)} %  (${off} of ${data.length} B)`); continue; }
+      if (a === `OTA ok ${off + chunk.length}`) { off += chunk.length; setPct(Math.floor(100 * off / data.length)); progress(`ESP32 ${Math.floor(100 * off / data.length)} %  (${off} of ${data.length} B)`); continue; }
       const st = await status(), w = st && /active=1/.test(st) ? +st.split('written=')[1].split(/\s/)[0] : null;
       if (w === off + chunk.length) { off = w; continue; }
       if (w === off && ++resends <= 20) { say(`line at ${off} not taken (${a}); sent again`); continue; }
@@ -163,24 +167,28 @@ async function otaUpdate(b0, build) {
     if (!bad) break;
     if (attempt === 3) throw new Error('3 attempts failed');
   }
+  stage('The board checks the new firmware and restarts');
   const end = await ask(b, 'ota end', /^OTA (done|error)/, 15000);
   say(String(end || 'no answer to "ota end" (the board can restart before it): checking'));
   if (end && !end.startsWith('OTA done')) throw new Error('"ota end" failed');
   const oldPort = b.port; await closeBoard(b);
   b = await waitBoard(x => x.mode === 'app' && x.port !== oldPort || x.t0 > Date.now() - 100000 && x.mode === 'app' && x.lines.some(l => /^BOOT rover-firmware/.test(l)), 100000,
     'The board restarts. When it is back on USB: press "Connect an Rx" and choose it again.');
-  if (!b) throw new Error('the board did not come back within 100 s; it returns to the old image at 120 s');
+  if (!b) throw new Error('The board did not come back on USB within 100 s. It returns to its old firmware by itself after 2 min.');
+  stage('Confirming the new firmware');
   await sleep(1500);
   let st = null;
   for (let i = 0; i < 6 && !st; i++) { st = await status(); if (!st) await sleep(4000); }
   say(String(st));
-  if (!st || !/state=1/.test(st)) throw new Error('no new image waits for a confirm');
+  if (!st || !/state=1/.test(st)) throw new Error('The board did not start the new firmware. It still runs its old firmware.');
   say(String(await ask(b, 'ota confirm', /^OTA/, 5000)));
   say(String(await status()));
   say(`ESP32 now: ${b.firmware} ${b.version || ''}`);
+  return `Installed. The ESP32 now runs ${b.firmware} ${b.version || ''}.`;
 }
 
 async function romLoad(b0, build, erase) {
+  stage('Checking the firmware files');
   const fl = build.m.esp32.full_load, blobs = [];
   if (erase) for (const r of fl.erase_if_other_table) {
     const from = parseInt(r.from, 16), to = parseInt(r.to, 16);
@@ -189,6 +197,7 @@ async function romLoad(b0, build, erase) {
   for (const x of fl.parts) { blobs.push({ data: await fetchBuild(build, x.file), address: parseInt(x.offset, 16) }); say(`${x.file} at ${x.offset}: ${blobs.at(-1).data.length} B, SHA-256 checked`); }
   let b = b0;
   if (b.mode !== 'rom') {
+    stage('Restarting the board into its loader');
     const oldPort = b.port;
     if (b.firmware === 'rover firmware') { say('rover firmware: "dld"'); await send(b, 'dld'); await closeBoard(b).catch(() => {}); }
     else {
@@ -198,6 +207,7 @@ async function romLoad(b0, build, erase) {
     }
     b = await waitBoard(x => x.mode === 'rom', 15000, 'The board restarts for the load. If Chrome asks: press "Connect an Rx" and choose "ESP32-S2".');
     if (!b) {
+      stage('Waiting for you: start the board in its loader');
       instruct('1 Unplug USB. 2 Hold the button "0" on the board. 3 Plug USB in. 4 Release the button. 5 Press "Connect an Rx" and choose "ESP32-S2".');
       b = await waitBoard(x => x.mode === 'rom', 180000);
       if (!b) throw new Error('no board ready for the load within 3 min');
@@ -205,6 +215,7 @@ async function romLoad(b0, build, erase) {
     instruct('');
     if (b.port === oldPort) say('same port object for the load');
   }
+  stage('Connecting to the board');
   const { ESPLoader, Transport } = await loadEsptool();
   const term = { clean() {}, writeLine: t => say('esptool: ' + t), write: t => { if (t.trim()) say('esptool: ' + t.trim()); } };
   if (b.port.readable) await b.port.close().catch(() => {});
@@ -214,17 +225,21 @@ async function romLoad(b0, build, erase) {
   await loader.detectChip('no_reset');
   say(`chip: ${await loader.chip.getChipDescription(loader)}`);
   loader.FLASH_WRITE_SIZE = 0x400; if (loader.chip) loader.chip.FLASH_WRITE_SIZE = 0x400;
+  const sizes = blobs.map(x => x.data.length), total = sizes.reduce((a, c) => a + c, 0);
+  stage('Writing the ESP32 firmware (about 1 min; keep the board plugged in)', 0);
   const bstr = d => { let s = ''; for (let i = 0; i < d.length; i += 0x8000) s += String.fromCharCode.apply(null, d.subarray(i, i + 0x8000)); return s; };
   await loader.writeFlash({ fileArray: blobs.map(x => ({ data: bstr(x.data), address: x.address })), flashSize: '4MB', flashMode: 'dio', flashFreq: '80m',
-    eraseAll: false, compress: true, reportProgress: (i, w, t) => { progress(`file ${i + 1} of ${blobs.length}: ${Math.floor(100 * w / t)} %`); } });
+    eraseAll: false, compress: true, reportProgress: (i, w, t) => { setPct(Math.floor(100 * (sizes.slice(0, i).reduce((a, c) => a + c, 0) + sizes[i] * w / t) / total)); progress(`file ${i + 1} of ${blobs.length}: ${Math.floor(100 * w / t)} %`); } });
   } finally { await transport.disconnect().catch(() => {}); if (b.port.readable) await b.port.close().catch(() => {}); }
   boards.delete(b.port); render();
+  stage('Waiting for you: unplug and plug in the board');
   instruct('Written. 1 Unplug USB and all vehicle power. 2 Wait 3 s. 3 Plug USB in. 4 If the board does not show: press "Connect an Rx" and choose it.');
   const rover = build.m.esp32.usb_update;
-  b = await waitBoard(x => x.mode === 'app' && !x.detecting && (rover ? x.firmware === 'rover firmware' && !!x.version : !!x.firmware), 180000);
+  b = await waitBoard(x => x.mode === 'app' && (rover ? !x.detecting && x.firmware === 'rover firmware' && !!x.version : true), 180000);
   instruct('');
-  if (!b) throw new Error('the new firmware did not show on USB within 3 min');
+  if (!b) throw new Error('The board did not come back within 3 min. Unplug and plug it in again, then press "Connect an Rx": the page shows what it runs.');
   say(`ESP32 now: ${b.firmware} ${b.version || ''}`);
+  return rover ? `Installed. The ESP32 now runs ${b.firmware} ${b.version || ''}.` : 'Installed. The board is back on USB; this firmware does not report its version.';
 }
 
 function crc16(d) { let c = 0xFFFF; for (const x of d) { c ^= x << 8; for (let k = 0; k < 8; k++) c = c & 0x8000 ? ((c << 1) ^ 0x8005) & 0xFFFF : (c << 1) & 0xFFFF; } return c; }
@@ -253,18 +268,21 @@ async function readFrame(b, ms) {
   }
 }
 async function stmLoad(b0, build) {
+  stage('Checking the STM32 files');
   const header = await fetchBuild(build, build.m.stm32.update.header);
   const image = await fetchBuild(build, build.m.stm32.update.image);
   const hv = new DataView(header.buffer), n = image.length / 1040;
   if (header.length !== 52 || image.length % 1040 || n !== hv.getUint16(18, true)) throw new Error(`header ${header.length} B, image ${image.length} B, chunk count ${hv.getUint16(18, true)}`);
   say(`STM32 image: ${n} chunks`);
   let b = b0;
+  stage('Preparing the board for the STM32 update');
   const set = await ask(b, 'stm iaphold', /STM iaphold (set|:)/, 10000);
   say(String(set));
   if (set && !/STM iaphold set/.test(set)) throw new Error(set);
   if (!set) throw new Error('no "STM iaphold set" (rover firmware 0.5.26 or later needed)');
   const oldPort = b.port; await closeBoard(b);
   bridgeNext = true;
+  stage('Waiting for you: unplug and plug in the board');
   instruct('1 Unplug USB and all vehicle power. 2 Wait 3 s. 3 Plug USB in. 4 If the board does not show: press "Connect an Rx" and choose it.');
   b = await waitBoard(x => x.mode === 'app' && x.port !== oldPort && x.bridge, 180000);
   bridgeNext = false; instruct('');
@@ -285,20 +303,23 @@ async function stmLoad(b0, build) {
     if (Date.now() - t0 > 4000) { say('no "STM bridge on" line (sent before the port opened); HELLO anyway'); b.bin = new Uint8Array(0); break; }
     await sleep(100);
   }
+  stage('Checking the STM32 update loader');
   await send(b, frame(1));
   const h = await readFrame(b, 2000).then(f => f.cid === 1 && f.p.length >= 7 ? f : Promise.reject(new Error('not a HELLO answer'))).catch(() => { throw new Error('The STM32 has no update loader (no answer to HELLO). Nothing was written. It needs a one-time load of the factory image with an ST-LINK.'); });
   say(`HELLO: boot status ${h.p[0]}, app ${h.p[1]}.${h.p[2]}.${h.p[3]}, IAP ${h.p[4]}.${h.p[5]}.${h.p[6]}`);
   await send(b, frame(2, header));
   let r = await readFrame(b, 2000);
   if (r.cid !== 2 || r.p[0]) throw new Error(`BEGIN_UPDATE refused: answer cid ${r.cid}, status ${r.p[0]}`);
+  stage('Writing the STM32 app (keep the board plugged in)', 0);
   for (let i = 0; i < n; i++) {
     const pl = new Uint8Array(2 + 1040); new DataView(pl.buffer).setUint16(0, i, true); pl.set(image.subarray(i * 1040, (i + 1) * 1040), 2);
     await send(b, frame(3, pl));
     r = await readFrame(b, 6000);
     const idx = r.p[0] | r.p[1] << 8;
     if (r.cid !== 3 || idx !== i || r.p[2]) throw new Error(`chunk ${i}: answer cid ${r.cid}, echoed ${idx}, reason ${r.p[2]}`);
-    progress(`STM32 chunk ${i + 1} of ${n}`);
+    setPct(Math.floor(100 * (i + 1) / n)); progress(`STM32 chunk ${i + 1} of ${n}`);
   }
+  stage('Starting the new STM32 app');
   await send(b, frame(4));
   r = await readFrame(b, 3000);
   if (r.cid === 1) { say(`boot status after FINALIZE: ${r.p[0]}, app ${r.p[1]}.${r.p[2]}.${r.p[3]}`); r = await readFrame(b, 3000); }
@@ -309,9 +330,11 @@ async function stmLoad(b0, build) {
   say('STM32 app loaded and started. The ESP32 leaves the bridge 10 s after the last byte.');
   b.binMode = false; b.buf = '';
   if (!await waitLine(b, /STM bridge off/, 30000)) say('no "STM bridge off" line within 30 s');
+  stage('Reading the STM32 version');
   b.stm = null;
   await ask(b, 'stm read 30', /^STM ans .*cid=30r/, 5000);
   say(`STM32 now: ${b.stm || 'no answer to "stm read 30"'}`);
+  return b.stm ? `Installed. The STM32 now runs ${b.stm}.` : 'Installed and started. The board did not report the STM32 version yet.';
 }
 
 function render() {
@@ -332,7 +355,15 @@ function render() {
   }).join('') || '<p class="note">No Rx connected.</p>';
   for (const el of document.querySelectorAll('button[data-o]')) el.onclick = () => { const b = [...boards.values()][+el.dataset.b], o = b.offers[+el.dataset.o]; if (confirm(`${o.l1}\n${o.l2}\n${o.l3}`)) run(o.l1, o.go); };
   $('job').hidden = !job;
-  if (job) $('job').innerHTML = `<b>${esc(job.name)}</b>${job.done ? '' : ' (running)'}<pre class="log" data-p="job">${esc(job.log.join('\n'))}</pre>`;
+  if (job) {
+    const res = job.result, head = res ? (res.ok ? 'Done' : 'Stopped') : job.stage;
+    $('job').innerHTML = `<b>${esc(job.name)}</b>
+      <div class="stage ${res ? (res.ok ? 'good' : 'bad') : ''}">${esc(head)}</div>
+      ${job.pct !== null && !res ? `<div class="bar"><div style="width: ${job.pct}%"></div></div><div class="note">${job.pct} %</div>` : ''}
+      ${res ? `<div class="result ${res.ok ? 'good' : 'bad'}">${esc(res.text)}</div>` : ''}
+      <details ${job.devOpen ? 'open' : ''}><summary>Developer log</summary><pre class="log" data-p="job">${esc(job.log.join('\n'))}</pre></details>`;
+    $('job').querySelector('details').ontoggle = e => { job.devOpen = e.target.open; };
+  }
   for (const e of document.querySelectorAll('pre[data-p]')) { const s = keep.get(e.dataset.p); e.scrollTop = s === undefined || s < 0 ? e.scrollHeight : s; }
 }
 let stepText = '';
@@ -385,7 +416,7 @@ function offersFor(b) {
   const rev = b.board || 'RX_REVA', full = 'You unplug and plug in the board once at the end.';
   const sel = currentRef();
   for (const build of builds) {
-    const m = build.m, l2 = srcLine(m, build.release), name = m.chip === 'stm32g070' ? `${m.label || 'STM32 app'} ${m.version}` : m.esp32.usb_update ? `${m.label || 'ESP32 rover firmware'} ${m.version}` : `${m.label || 'ESP32 main-branch firmware (V1.0 line)'}, ${m.version}`;
+    const m = build.m, l2 = srcLine(m, build.release), name = m.chip === 'stm32g070' ? `${m.label || 'STM32 app'} ${m.version}` : m.esp32.usb_update ? `${m.label || 'ESP32 rover firmware'} ${m.version}` : `${m.label || m.source.repo.split('/').pop() + ' firmware'}, ${m.version}`;
     if (!inSel(build, sel)) continue;
     const refuse = reason => no.push({ l1: name, l2, reason });
     if (!m.boards.includes(rev)) { refuse(`This image is for board revision ${m.boards.join(', ')}. This board is revision ${rev}.`); continue; }
@@ -393,7 +424,7 @@ function offersFor(b) {
       const otherTable = rover && b.tableCrc && b.tableCrc !== m.esp32.partition_table.crc32;
       if (rover && !otherTable) out.push({ l1: `Install ${name}`, l2, l3: `${change(b.version, m.version)} Settings kept. The old version comes back by itself if the new one fails.`, go: () => otaUpdate(b, build) });
       else if (rover) out.push({ l1: `Install ${name} (all areas)`, l2, l3: `${change(b.version, m.version)} The board has another partition table: erases all settings. ${full}`, go: () => romLoad(b, build, true) });
-      else if (v1) out.push({ l1: `Replace the ${b.firmware.startsWith('Monitor') ? 'Monitor' : 'V1.0'} firmware with ${name}`, l2, l3: `Erases all settings. ${full}`, go: () => romLoad(b, build, true) });
+      else if (v1) out.push({ l1: `Replace the ${b.firmware.startsWith('Monitor') ? 'Monitor firmware' : 'board\'s firmware'} with ${name}`, l2, l3: `Erases all settings. ${full}`, go: () => romLoad(b, build, true) });
       else if (rom) out.push({ l1: `Install ${name} (all areas)`, l2, l3: `Erases all settings. ${full}`, go: () => romLoad(b, build, true) });
     } else if (m.chip === 'esp32s2') {
       if (rover) out.push({ l1: `Replace rover firmware ${b.version} with ${name}`, l2, l3: `Erases all settings and the flight log. The USB update does not work after it. ${full}`, go: () => romLoad(b, build, true) });
@@ -407,8 +438,8 @@ function offersFor(b) {
       else out.push({ l1: `${vcmp(m.version, stmVer[1]) === 0 ? 'Reinstall' : 'Install'} ${name}`, l2, l3: `${change(stmVer[1], m.version)} STM32 settings kept. You unplug and plug in the board once.`, go: () => stmLoad(b, build) });
     }
   }
-  if (rover && b.role === 'monitor') out.push({ l1: 'Switch to vehicle', l2: 'This board', l3: 'The board restarts as a vehicle. Nothing is written.', go: async () => { await send(b, 'restart'); say('sent "restart"'); } });
-  if (rover && b.role !== 'monitor') out.push({ l1: 'Switch to monitor', l2: 'This board', l3: 'The board restarts as a monitor until the next power-off. Nothing is written.', go: async () => { await send(b, 'monitor'); say('sent "monitor"'); } });
+  if (rover && b.role === 'monitor') out.push({ l1: 'Switch to vehicle', l2: 'This board', l3: 'The board restarts as a vehicle. Nothing is written.', go: async () => { await send(b, 'restart'); say('sent "restart"'); return 'The board restarts as a vehicle.'; } });
+  if (rover && b.role !== 'monitor') out.push({ l1: 'Switch to monitor', l2: 'This board', l3: 'The board restarts as a monitor until the next power-off. Nothing is written.', go: async () => { await send(b, 'monitor'); say('sent "monitor"'); return 'The board restarts as a monitor.'; } });
   out.refused = no;
   return out;
 }
