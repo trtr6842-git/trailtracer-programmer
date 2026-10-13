@@ -2,6 +2,61 @@
   "schema": 1,
   "builds": [
     {
+      "manifest": "Trail_Tracer_Mower/main/01d0aa640348/manifest.json",
+      "repo": "rctestflight/Trail_Tracer_Mower",
+      "branch": "main",
+      "commit": "01d0aa640348a1f11c12f67cbc34f6423ea70f42",
+      "subject": "",
+      "chip": "esp32s2",
+      "name": "ESP32 firmware (no version report)",
+      "version": "main 01d0aa6",
+      "built_utc": "2026-10-13T10:08:51Z"
+    },
+    {
+      "manifest": "Trail_Tracer_Mower/dev-tyler/2c789c330847/manifest.json",
+      "repo": "rctestflight/Trail_Tracer_Mower",
+      "branch": "dev-tyler",
+      "commit": "2c789c330847d4226f1c3318eab5ca74206efef3",
+      "subject": "",
+      "chip": "esp32s2",
+      "name": "ESP32 rover firmware",
+      "version": "0.5.65",
+      "built_utc": "2026-10-13T10:08:33Z"
+    },
+    {
+      "manifest": "Trail_Tracer_Mower/dev-tyler/2c789c330847/stm32/manifest.json",
+      "repo": "rctestflight/Trail_Tracer_Mower",
+      "branch": "dev-tyler",
+      "commit": "2c789c330847d4226f1c3318eab5ca74206efef3",
+      "subject": "",
+      "chip": "stm32g070",
+      "name": "STM32 app",
+      "version": "2.0.24",
+      "built_utc": "2026-10-13T10:08:33Z"
+    },
+    {
+      "manifest": "Trail_Tracer_Mower/dev/d31d8b07985e/manifest.json",
+      "repo": "rctestflight/Trail_Tracer_Mower",
+      "branch": "dev",
+      "commit": "d31d8b07985e15298d11900a30d55439e40d55b2",
+      "subject": "",
+      "chip": "esp32s2",
+      "name": "ESP32 rover firmware",
+      "version": "0.5.65",
+      "built_utc": "2026-10-13T10:08:11Z"
+    },
+    {
+      "manifest": "Trail_Tracer_Mower/dev/d31d8b07985e/stm32/manifest.json",
+      "repo": "rctestflight/Trail_Tracer_Mower",
+      "branch": "dev",
+      "commit": "d31d8b07985e15298d11900a30d55439e40d55b2",
+      "subject": "",
+      "chip": "stm32g070",
+      "name": "STM32 app",
+      "version": "2.0.24",
+      "built_utc": "2026-10-13T10:08:11Z"
+    },
+    {
       "manifest": "Trail_Tracer_Mower/main/3243fbb76c50/manifest.json",
       "repo": "rctestflight/Trail_Tracer_Mower",
       "branch": "main",
