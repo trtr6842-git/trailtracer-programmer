@@ -1,0 +1,44 @@
+{
+  "schema": 1,
+  "product": "trail-tracer-rx",
+  "chip": "stm32g070",
+  "boards": [
+    "RX_REVA"
+  ],
+  "name": "STM32 app",
+  "version": "2.0.44",
+  "source": {
+    "repo": "rctestflight/Trail_Tracer_Mower",
+    "branch": "dev-tyler",
+    "commit": "2c96ef8d447a3b12c193fd1340fe1c0e8b125c72",
+    "subject": "",
+    "built_utc": "2026-10-13T22:20:17Z",
+    "builder": "local"
+  },
+  "stm32": {
+    "app_version": "2.0.44",
+    "link": "v2",
+    "boot_checker_min": "0.1.0",
+    "product_id": "0x46544352",
+    "update": {
+      "header": "app.commit_header",
+      "image": "app.bin.encrypted",
+      "chunk_size": 1040,
+      "chunks": 84
+    },
+    "needs_esp32": "0.5.26"
+  },
+  "label": "STM32 app",
+  "files": [
+    {
+      "path": "app.commit_header",
+      "size": 52,
+      "sha256": "a8bfe257bed7d89fd2a49a244604fcee23a7da0e9f3ca1208a03a9367a29e0a3"
+    },
+    {
+      "path": "app.bin.encrypted",
+      "size": 87360,
+      "sha256": "cca83455746c98e7f55a9c8a835a87609511ec184a4eaa8deef5efc40069dfc1"
+    }
+  ]
+}
