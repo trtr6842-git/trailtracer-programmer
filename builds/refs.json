@@ -23,6 +23,13 @@
     },
     {
       "repo": "rctestflight/Trail_Tracer_Mower",
+      "ref": "feature/dev-tyler-0.5.69-0.5.78",
+      "tag": false,
+      "title": "Rover + monitor firmware",
+      "description": "Rover mode, monitor role and telemetry, with the matching STM32 app"
+    },
+    {
+      "repo": "rctestflight/Trail_Tracer_Mower",
       "ref": "main",
       "tag": false
     },
