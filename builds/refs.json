@@ -18,8 +18,8 @@
       "repo": "rctestflight/Trail_Tracer_Mower",
       "ref": "dev-tyler",
       "tag": false,
-      "title": "Rover + monitor firmware",
-      "description": "Rover mode, monitor role and telemetry, with the matching STM32 app"
+      "title": "Rx test build 0.6.19",
+      "description": "Rx firmware 0.6.19 with the matching Rx STM32 app"
     },
     {
       "repo": "rctestflight/Trail_Tracer_Mower",
