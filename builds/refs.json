@@ -18,8 +18,8 @@
       "repo": "rctestflight/Trail_Tracer_Mower",
       "ref": "dev-tyler",
       "tag": false,
-      "title": "Rx test build 0.6.21",
-      "description": "Rx firmware 0.6.21 with the matching Rx STM32 app"
+      "title": "Rx test build 0.6.24",
+      "description": "Rx firmware 0.6.24 with the matching Rx STM32 app"
     },
     {
       "repo": "rctestflight/Trail_Tracer_Mower",
