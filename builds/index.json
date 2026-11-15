@@ -2,6 +2,17 @@
   "schema": 1,
   "builds": [
     {
+      "manifest": "Trail-Tracer/main/fd6755ac32ce/manifest.json",
+      "repo": "rctestflight/Trail-Tracer",
+      "branch": "main",
+      "commit": "fd6755ac32cef482aebff132c50fc8f356d28ed1",
+      "subject": "",
+      "chip": "esp32s2",
+      "name": "ESP32 firmware (no version report)",
+      "version": "main fd6755a",
+      "built_utc": "2026-11-15T04:55:55Z"
+    },
+    {
       "manifest": "Trail-Tracer/main/e69f0e7e5cbb/manifest.json",
       "repo": "rctestflight/Trail-Tracer",
       "branch": "main",
