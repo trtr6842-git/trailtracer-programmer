@@ -30,6 +30,12 @@
     },
     {
       "repo": "rctestflight/Trail_Tracer_Mower",
+      "ref": "fix/charge-exit",
+      "tag": false,
+      "description": "Rx firmware 0.7.6 plus the sonar fix: the sonar sensors of the drive direction act in every autonomous drive; BTx detection at the closest point of each pass"
+    },
+    {
+      "repo": "rctestflight/Trail_Tracer_Mower",
       "ref": "main",
       "tag": false
     },
@@ -48,6 +54,12 @@
     {
       "repo": "rctestflight/Trail_Tracer_Mower",
       "ref": "v0.7.17",
+      "tag": true,
+      "description": "Rx firmware 0.7.6 plus the sonar fix: the sonar sensors of the drive direction act in every autonomous drive; BTx detection at the closest point of each pass"
+    },
+    {
+      "repo": "rctestflight/Trail_Tracer_Mower",
+      "ref": "v0.7.18",
       "tag": true,
       "description": "Rx firmware 0.7.6 plus the sonar fix: the sonar sensors of the drive direction act in every autonomous drive; BTx detection at the closest point of each pass"
     },
